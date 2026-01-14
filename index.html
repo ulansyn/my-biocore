@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biocore Secure Analytics</title>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+    <!-- Crypto JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+
+    <!-- Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-body: #F3F4F6;
+            --bg-card: #FFFFFF;
+            --text-primary: #111827;
+            --text-secondary: #6B7280;
+            --border-color: #E5E7EB;
+            --brand-primary: #4F46E5;
+            --brand-error: #EF4444;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            margin: 0; padding: 0;
+            overflow-x: hidden;
+        }
+
+        /* --- AUTH SCREEN --- */
+        #auth-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(243, 244, 246, 1);
+            z-index: 9999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            transition: opacity 0.5s ease;
+        }
+
+        .auth-box {
+            background: white; padding: 40px; border-radius: 16px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            width: 100%; max-width: 380px; text-align: center;
+            border: 1px solid var(--border-color);
+        }
+
+        .auth-box h2 { margin-top: 0; margin-bottom: 8px; font-weight: 700; }
+        .auth-box p { color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 24px; }
+
+        .auth-input {
+            width: 100%; padding: 12px 16px; margin-bottom: 16px;
+            border: 1px solid #D1D5DB; border-radius: 8px; font-size: 1rem; outline: none; box-sizing: border-box;
+            transition: all 0.2s;
+        }
+        .auth-input:focus { border-color: var(--brand-primary); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
+
+        .auth-btn {
+            width: 100%; padding: 12px; background: var(--brand-primary); color: white;
+            border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background 0.2s;
+        }
+        .auth-btn:hover { background: #4338ca; }
+
+        .status-msg { font-size: 0.85rem; margin-top: 16px; min-height: 20px; }
+        .status-error { color: var(--brand-error); }
+
+        /* --- DASHBOARD STYLES --- */
+        .layout-wrapper {
+            max-width: 1280px; margin: 0 auto; padding: 40px 24px;
+            opacity: 0; pointer-events: none; transition: opacity 0.6s ease;
+        }
+        .layout-wrapper.visible { opacity: 1; pointer-events: all; }
+
+        header {
+            margin-bottom: 40px; display: flex; justify-content: space-between;
+            align-items: flex-end; border-bottom: 1px solid var(--border-color); padding-bottom: 24px;
+        }
+        .header-title h1 { font-size: 1.5rem; font-weight: 700; margin: 0; }
+
+        .header-controls { display: flex; align-items: center; gap: 15px; }
+        .logout-btn {
+            font-size: 0.85rem; color: var(--text-secondary); background: none; border: none; cursor: pointer; text-decoration: underline;
+        }
+        .logout-btn:hover { color: var(--brand-error); }
+        .header-meta { font-size: 0.875rem; color: var(--text-secondary); background: #fff; padding: 6px 12px; border: 1px solid var(--border-color); border-radius: 6px; font-weight: 500;}
+
+        .dashboard-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
+        .card-full-width { grid-column: 1 / -1; }
+
+        .card {
+            background: var(--bg-card); border: 1px solid var(--border-color);
+            border-radius: 12px; padding: 24px; display: flex; flex-direction: column;
+            box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1); transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .card-title { font-weight: 600; font-size: 1rem; color: var(--text-primary); }
+        .card-badge { font-size: 0.75rem; padding: 4px 10px; border-radius: 99px; background: #EEF2FF; color: var(--brand-primary); font-weight: 600; }
+        .chart-wrapper { height: 300px; width: 100%; position: relative; }
+
+        @media (max-width: 768px) {
+            .dashboard-grid { grid-template-columns: 1fr; }
+            .layout-wrapper { padding: 20px 16px; }
+            header { flex-direction: column; align-items: flex-start; gap: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- AUTH OVERLAY -->
+    <div id="auth-overlay">
+        <div class="auth-box">
+            <h2>Biocore Analytics</h2>
+            <p>Encrypted Data Vault</p>
+
+            <input type="password" id="pass-input" class="auth-input" placeholder="Enter Access Key" autocomplete="current-password" onkeyup="if(event.key === 'Enter') attemptLogin(false)">
+            <button class="auth-btn" onclick="attemptLogin(false)">Decrypt & Enter</button>
+
+            <div id="status-msg" class="status-msg">Loading data...</div>
+        </div>
+    </div>
+
+    <!-- MAIN DASHBOARD -->
+    <div class="layout-wrapper" id="dashboard">
+        <header>
+            <div class="header-title">
+                <h1>Biocore Analytics</h1>
+                <p>Performance & Biometrics</p>
+            </div>
+            <div class="header-controls">
+                <div class="header-meta">SECURE SESSION</div>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
+        </header>
+
+        <div class="dashboard-grid">
+            <!-- 1. Weight -->
+            <div class="card card-full-width">
+                <div class="card-header"><span class="card-title">Weight Trend</span><span class="card-badge">KG</span></div>
+                <div class="chart-wrapper"><canvas id="weightChart"></canvas></div>
+            </div>
+
+            <!-- 2. Pushups -->
+            <div class="card">
+                <div class="card-header"><span class="card-title">Strength: Pushups</span><span class="card-badge" style="color:#8B5CF6; background:#F5F3FF">REPS</span></div>
+                <div class="chart-wrapper"><canvas id="pushupsChart"></canvas></div>
+            </div>
+
+            <!-- 3. Torso -->
+            <div class="card">
+                <div class="card-header"><span class="card-title">Torso Metrics</span><span class="card-badge" style="color:#F59E0B; background:#FFFBEB">CM</span></div>
+                <div class="chart-wrapper"><canvas id="torsoChart"></canvas></div>
+            </div>
+
+            <!-- 4. Arms -->
+            <div class="card">
+                <div class="card-header"><span class="card-title">Arms Symmetry</span><span class="card-badge" style="color:#10B981; background:#ECFDF5">L / R</span></div>
+                <div class="chart-wrapper"><canvas id="armsChart"></canvas></div>
+            </div>
+
+            <!-- 5. Legs -->
+            <div class="card">
+                <div class="card-header"><span class="card-title">Legs Symmetry</span><span class="card-badge" style="color:#10B981; background:#ECFDF5">L / R</span></div>
+                <div class="chart-wrapper"><canvas id="legsChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. SETUP & AUTO-LOGIN ---
+        let encryptedString = null;
+        const statusEl = document.getElementById('status-msg');
+        const LS_KEY = 'biocore_access_key'; // Ключ для LocalStorage
+
+        fetch('public_data.json')
+            .then(response => {
+                if(!response.ok) throw new Error("Data file missing");
+                return response.json();
+            })
+            .then(data => {
+                encryptedString = data;
+                statusEl.innerText = "Data loaded.";
+
+                // --- АВТОМАТИЧЕСКИЙ ВХОД ---
+                const savedPass = localStorage.getItem(LS_KEY);
+                if (savedPass) {
+                    document.getElementById('pass-input').value = savedPass;
+                    statusEl.innerText = "Auto-decrypting...";
+                    attemptLogin(true); // true = это авто-вход
+                } else {
+                    statusEl.innerText = "Password required.";
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                statusEl.innerText = "Error: public_data.json not found.";
+                statusEl.className = "status-msg status-error";
+            });
+
+        // --- 2. DECRYPTION LOGIC ---
+        function attemptLogin(isAuto) {
+            const password = document.getElementById('pass-input').value;
+
+            if (!encryptedString) return;
+            if (!password && !isAuto) {
+                statusEl.innerText = "Enter password.";
+                return;
+            }
+
+            // Небольшая задержка для UI
+            setTimeout(() => {
+                try {
+                    const decrypted = CryptoJS.AES.decrypt(encryptedString, password);
+                    const strData = decrypted.toString(CryptoJS.enc.Utf8);
+
+                    if (!strData) throw new Error("Decryption failed");
+
+                    const jsonData = JSON.parse(strData);
+
+                    // УСПЕХ: Сохраняем пароль в память браузера
+                    localStorage.setItem(LS_KEY, password);
+
+                    unlockDashboard(jsonData);
+
+                } catch (e) {
+                    console.error(e);
+                    // Если это был авто-вход и он не сработал (ты сменил пароль в боте)
+                    if (isAuto) {
+                        statusEl.innerText = "Saved password invalid. Please re-enter.";
+                        localStorage.removeItem(LS_KEY); // Удаляем старый пароль
+                    } else {
+                        statusEl.innerText = "Incorrect Password";
+                        statusEl.className = "status-msg status-error";
+                        shakeBox();
+                    }
+                }
+            }, 50);
+        }
+
+        function unlockDashboard(data) {
+            const overlay = document.getElementById('auth-overlay');
+            const dashboard = document.getElementById('dashboard');
+
+            overlay.style.opacity = '0';
+            setTimeout(() => {
+                overlay.style.display = 'none';
+                dashboard.classList.add('visible');
+                renderCharts(data);
+            }, 500);
+        }
+
+        function logout() {
+            localStorage.removeItem(LS_KEY);
+            location.reload();
+        }
+
+        function shakeBox() {
+            document.querySelector('.auth-box').animate([
+                { transform: 'translateX(0)' },
+                { transform: 'translateX(-5px)' },
+                { transform: 'translateX(5px)' },
+                { transform: 'translateX(0)' }
+            ], { duration: 300 });
+        }
+
+        // --- 3. CHART CONFIG (Оставляем без изменений) ---
+        Chart.defaults.font.family = "'Inter', sans-serif";
+        Chart.defaults.color = '#6B7280';
+        Chart.defaults.plugins.tooltip.backgroundColor = '#FFFFFF';
+        Chart.defaults.plugins.tooltip.titleColor = '#111827';
+        Chart.defaults.plugins.tooltip.bodyColor = '#4B5563';
+        Chart.defaults.plugins.tooltip.borderColor = '#E5E7EB';
+        Chart.defaults.plugins.tooltip.borderWidth = 1;
+        Chart.defaults.plugins.tooltip.padding = 10;
+        Chart.defaults.plugins.tooltip.cornerRadius = 8;
+
+        const commonOpts = {
+            responsive: true, maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: { legend: { align: 'end', labels: { usePointStyle: true, boxWidth: 6 } } },
+            scales: {
+                x: { type: 'time', time: { unit: 'day', displayFormats: { day: 'dd MMM' } }, grid: { display: false } },
+                y: { grid: { color: '#F3F4F6' }, border: { display: false } }
+            }
+        };
+
+        // --- 4. RENDER CHARTS ---
+        function renderCharts(rawData) {
+            const dates = Object.keys(rawData).sort();
+            const getVal = (d, path) => {
+                const day = rawData[d];
+                if (path === 'weight') return day.weight;
+                if (path.includes('.')) return path.split('.').reduce((o, i) => (o ? o[i] : null), day);
+                return day[path];
+            };
+
+            // 1. Weight
+            const ctxW = document.getElementById('weightChart').getContext('2d');
+            const gradW = ctxW.createLinearGradient(0,0,0,300);
+            gradW.addColorStop(0, 'rgba(79, 70, 229, 0.15)'); gradW.addColorStop(1, 'rgba(79, 70, 229, 0)');
+
+            new Chart(ctxW, {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: 'Weight', data: dates.map(d=>({x:d, y:getVal(d,'weight')})).filter(p=>p.y),
+                        borderColor: '#4F46E5', backgroundColor: gradW, fill: true, tension: 0.3, pointRadius: 0, pointHoverRadius: 6
+                    }]
+                }, options: commonOpts
+            });
+
+            // 2. Pushups
+            const pData = { min:[], max:[], dots:[] };
+            dates.forEach(d => {
+                let v = getVal(d, 'pushups');
+                if(!v) return;
+                let arr = Array.isArray(v)?v:[v];
+                pData.min.push({x:d, y:Math.min(...arr)});
+                pData.max.push({x:d, y:Math.max(...arr)});
+                arr.forEach(val=> pData.dots.push({x:d, y:val}));
+            });
+
+            new Chart(document.getElementById('pushupsChart'), {
+                data: {
+                    datasets: [
+                        { type:'line', data:pData.max, borderColor:'transparent', pointRadius:0, fill:false },
+                        { type:'line', label:'Range', data:pData.min, borderColor:'#C4B5FD', backgroundColor:'rgba(139,92,246,0.1)', fill:'-1', tension:0.2 },
+                        { type:'scatter', label:'Set', data:pData.dots, backgroundColor:'#8B5CF6' }
+                    ]
+                }, options: commonOpts
+            });
+
+            // 3. Torso
+            const getTorso = (d,k) => {
+                const v = rawData[d];
+                if(v.body && v.body[k]) return v.body[k]; // new format
+                if(v.torso && v.torso[k]) return v.torso[k].center; // old format
+                return null;
+            }
+            new Chart(document.getElementById('torsoChart'), {
+                type:'line',
+                data: {
+                    datasets: [
+                        { label:'Chest', borderColor:'#F59E0B', data: dates.map(d=>({x:d, y:getTorso(d,'chest')})).filter(p=>p.y) },
+                        { label:'Waist', borderColor:'#EF4444', data: dates.map(d=>({x:d, y:getTorso(d,'waist')})).filter(p=>p.y) },
+                        { label:'Hips', borderColor:'#3B82F6', data: dates.map(d=>({x:d, y:getTorso(d,'hips')})).filter(p=>p.y) }
+                    ]
+                }, options: commonOpts
+            });
+
+            // 4 & 5. Limbs
+            const getLimb = (d,g,p,s) => {
+                const v = rawData[d];
+                if(v[g] && v[g][p]) return v[g][p][s];
+                return null;
+            }
+            const limbCfg = (g,p1,p2) => ({
+                type:'line',
+                data: {
+                    datasets: [
+                        { label: p1+' (L)', borderColor:'#10B981', borderDash:[5,5], data:dates.map(d=>({x:d, y:getLimb(d,g,p1,'left')})).filter(p=>p.y) },
+                        { label: p1+' (R)', borderColor:'#10B981', data:dates.map(d=>({x:d, y:getLimb(d,g,p1,'right')})).filter(p=>p.y) },
+                        { label: p2+' (L)', borderColor:'#6366F1', borderDash:[5,5], data:dates.map(d=>({x:d, y:getLimb(d,g,p2,'left')})).filter(p=>p.y) },
+                        { label: p2+' (R)', borderColor:'#6366F1', data:dates.map(d=>({x:d, y:getLimb(d,g,p2,'right')})).filter(p=>p.y) }
+                    ]
+                }, options: commonOpts
+            });
+
+            new Chart(document.getElementById('armsChart'), limbCfg('arms','biceps','forearm'));
+            new Chart(document.getElementById('legsChart'), limbCfg('legs','thigh','calf'));
+        }
+    </script>
+</body>
+</html>
