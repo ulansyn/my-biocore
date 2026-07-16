@@ -2,9 +2,12 @@ config.json
 data.json
 bot.py
 .env
+state.json
 
 .venv/
 venv/
 __pycache__/
 .idea/
 .DS_Store
+*.bak-*
+logs/

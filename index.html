@@ -1,379 +1,823 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Biocore Secure Analytics</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BIOCORE · Physical Intelligence</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+<style>
+:root{
+  color-scheme: dark;
+  --page:#0a0c0e;
+  --surface:#111417;
+  --surface-2:#171b1f;
+  --border:rgba(255,255,255,.07);
+  --border-strong:rgba(255,255,255,.12);
+  --text-1:#f2f5f7;
+  --text-2:#aab3ba;
+  --text-3:#6b757d;
+  --grid:#22272c;
+  --accent:#c8ff4a;          /* неон — только акценты интерфейса */
+  --accent-dim:rgba(200,255,74,.14);
+  --s1:#7aa21c;              /* серия 1 · зелёный (палитра валидирована) */
+  --s2:#2593b1;              /* серия 2 · циан */
+  --s3:#9085e9;              /* серия 3 · фиолет */
+  --s4:#c98500;              /* серия 4 · янтарь */
+  --good:#35c96b;
+  --bad:#e66767;
+  --radius:16px;
+  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--page);color:var(--text-1);min-height:100vh;
+  background-image:radial-gradient(ellipse 80% 40% at 50% -10%,rgba(200,255,74,.05),transparent);}
 
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+/* ---------- АВТОРИЗАЦИЯ ---------- */
+#auth-overlay{position:fixed;inset:0;background:var(--page);z-index:100;
+  display:flex;align-items:center;justify-content:center;
+  background-image:radial-gradient(ellipse 60% 45% at 50% 30%,rgba(200,255,74,.06),transparent);}
+.auth-card{width:min(360px,90vw);background:var(--surface);border:1px solid var(--border);
+  border-radius:20px;padding:36px 32px;text-align:center;
+  box-shadow:0 24px 80px rgba(0,0,0,.5);}
+.auth-logo{font-size:13px;letter-spacing:.35em;color:var(--accent);font-weight:700;margin-bottom:4px}
+.auth-sub{font-size:12px;color:var(--text-3);margin-bottom:28px;letter-spacing:.08em}
+.auth-input{width:100%;padding:13px 16px;background:var(--surface-2);color:var(--text-1);
+  border:1px solid var(--border-strong);border-radius:12px;font-size:15px;outline:none;
+  text-align:center;letter-spacing:.15em;transition:border-color .2s;}
+.auth-input:focus{border-color:var(--accent)}
+.auth-btn{width:100%;margin-top:14px;padding:13px;border:none;border-radius:12px;
+  background:var(--accent);color:#0c1200;font-size:14px;font-weight:700;cursor:pointer;
+  letter-spacing:.06em;transition:transform .15s, box-shadow .2s;}
+.auth-btn:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(200,255,74,.25)}
+.status-msg{margin-top:16px;font-size:12.5px;color:var(--text-3);min-height:18px}
+.status-msg.error{color:var(--bad)}
 
-    <!-- Crypto JS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+/* ---------- КАРКАС ---------- */
+.wrap{max-width:1180px;margin:0 auto;padding:32px 20px 64px;display:none}
+header.site{display:flex;align-items:flex-end;justify-content:space-between;
+  flex-wrap:wrap;gap:12px;margin-bottom:28px}
+.brand h1{font-size:26px;letter-spacing:.3em;font-weight:800}
+.brand h1 .b{color:var(--accent)}
+.brand .tag{font-size:11.5px;color:var(--text-3);letter-spacing:.22em;margin-top:5px;text-transform:uppercase}
+.head-date{font-size:13px;color:var(--text-2);text-align:right}
+.head-date .lock{display:inline-block;margin-left:12px;color:var(--text-3);cursor:pointer;
+  border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-size:11.5px;background:none;transition:color .2s}
+.head-date .lock:hover{color:var(--text-1)}
 
-    <!-- Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+/* ---------- КАРТОЧКИ ---------- */
+.card{background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,0)),var(--surface);
+  border:1px solid var(--border);border-radius:var(--radius);padding:22px;
+  animation:rise .45s ease both;}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+section{margin-bottom:22px}
+.sec-title{font-size:12px;letter-spacing:.24em;color:var(--text-3);text-transform:uppercase;
+  margin:34px 0 14px;display:flex;align-items:center;gap:10px}
+.sec-title::after{content:"";flex:1;height:1px;background:var(--border)}
 
-    <style>
-        :root {
-            --bg-body: #F3F4F6;
-            --bg-card: #FFFFFF;
-            --text-primary: #111827;
-            --text-secondary: #6B7280;
-            --border-color: #E5E7EB;
-            --brand-primary: #4F46E5;
-            --brand-error: #EF4444;
-        }
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.kpi .label{font-size:12px;color:var(--text-3);letter-spacing:.06em;margin-bottom:10px}
+.kpi .value{font-size:34px;font-weight:800;line-height:1.05}
+.kpi .value .unit{font-size:15px;color:var(--text-3);font-weight:500;margin-left:4px}
+.kpi .delta{margin-top:9px;font-size:12.5px;color:var(--text-3)}
+.kpi .delta.good{color:var(--good)}
+.kpi .delta.bad{color:var(--bad)}
+.kpi .delta.hot{color:var(--accent)}
 
-        body {
-            background-color: var(--bg-body);
-            color: var(--text-primary);
-            font-family: 'Inter', sans-serif;
-            margin: 0; padding: 0;
-            overflow-x: hidden;
-        }
+/* Переключатели */
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tab{padding:7px 14px;font-size:12.5px;border-radius:10px;border:1px solid var(--border);
+  background:none;color:var(--text-2);cursor:pointer;transition:all .15s;font-weight:500}
+.tab:hover{color:var(--text-1);border-color:var(--border-strong)}
+.tab.on{background:var(--accent-dim);border-color:rgba(200,255,74,.4);color:var(--accent);font-weight:700}
+.chart-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.chart-title{font-size:15px;font-weight:700}
+.chart-wrap{position:relative;height:340px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:14px}
+.legend .li{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text-2)}
+.legend .sw{width:14px;height:3px;border-radius:2px}
+.legend .sw.dot{width:9px;height:9px;border-radius:50%}
+.mini-note{font-size:11.5px;color:var(--text-3);margin-top:10px}
 
-        /* --- AUTH SCREEN --- */
-        #auth-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(243, 244, 246, 1);
-            z-index: 9999;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            transition: opacity 0.5s ease;
-        }
+/* Таблица */
+.table-toggle{font-size:11.5px;color:var(--text-3);background:none;border:1px solid var(--border);
+  border-radius:8px;padding:5px 10px;cursor:pointer}
+.table-toggle:hover{color:var(--text-1)}
+.data-table{display:none;width:100%;border-collapse:collapse;margin-top:14px;font-size:13px}
+.data-table th{color:var(--text-3);font-weight:500;text-align:left;padding:7px 10px;border-bottom:1px solid var(--border)}
+.data-table td{padding:7px 10px;border-bottom:1px solid var(--border);color:var(--text-2);font-variant-numeric:tabular-nums}
+.data-table.show{display:table}
 
-        .auth-box {
-            background: white; padding: 40px; border-radius: 16px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
-            width: 100%; max-width: 380px; text-align: center;
-            border: 1px solid var(--border-color);
-        }
+/* Тепловая карта */
+.heat-scroll{overflow-x:auto;padding-bottom:6px}
+.heat{display:flex;gap:3px}
+.heat-col{display:flex;flex-direction:column;gap:3px}
+.heat-cell{width:12px;height:12px;border-radius:3px;background:#1a2025;cursor:default;transition:transform .1s}
+.heat-cell:hover{transform:scale(1.35)}
+.heat-cell.l1{background:#2a3d10}
+.heat-cell.l2{background:#4a6b17}
+.heat-cell.l3{background:#7fb622}
+.heat-cell.rec{background:var(--accent);box-shadow:0 0 8px rgba(200,255,74,.7)}
+.heat-cell.future{background:#14181c}
+.heat-months{display:flex;font-size:10.5px;color:var(--text-3);margin-bottom:6px}
+.heat-legend{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-3);margin-top:12px}
+.heat-legend .heat-cell:hover{transform:none}
 
-        .auth-box h2 { margin-top: 0; margin-bottom: 8px; font-weight: 700; }
-        .auth-box p { color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 24px; }
+/* Тултип */
+#tip{position:fixed;z-index:60;background:#1c2126;border:1px solid var(--border-strong);
+  border-radius:10px;padding:9px 12px;font-size:12px;color:var(--text-2);pointer-events:none;
+  opacity:0;transition:opacity .1s;max-width:230px;box-shadow:0 8px 30px rgba(0,0,0,.5)}
+#tip b{color:var(--text-1)}
 
-        .auth-input {
-            width: 100%; padding: 12px 16px; margin-bottom: 16px;
-            border: 1px solid #D1D5DB; border-radius: 8px; font-size: 1rem; outline: none; box-sizing: border-box;
-            transition: all 0.2s;
-        }
-        .auth-input:focus { border-color: var(--brand-primary); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
+/* Сила / рекорды */
+.rec-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px}
+.rec .label{font-size:11.5px;color:var(--text-3);margin-bottom:8px}
+.rec .value{font-size:26px;font-weight:800;color:var(--accent)}
+.rec .value.plain{color:var(--text-1)}
 
-        .auth-btn {
-            width: 100%; padding: 12px; background: var(--brand-primary); color: white;
-            border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background 0.2s;
-        }
-        .auth-btn:hover { background: #4338ca; }
+/* Тело */
+.body-grid{display:grid;grid-template-columns:220px 1fr;gap:14px}
+.part-list{display:flex;flex-direction:column;gap:6px}
+.part{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;
+  border:1px solid var(--border);border-radius:12px;background:none;color:var(--text-2);
+  font-size:13px;cursor:pointer;transition:all .15s;text-align:left}
+.part:hover{border-color:var(--border-strong);color:var(--text-1)}
+.part.on{background:var(--accent-dim);border-color:rgba(200,255,74,.4);color:var(--text-1)}
+.part .pv{font-size:12.5px;color:var(--text-3);font-variant-numeric:tabular-nums}
+.part.on .pv{color:var(--accent)}
 
-        .status-msg { font-size: 0.85rem; margin-top: 16px; min-height: 20px; }
-        .status-error { color: var(--brand-error); }
+/* Достижения */
+.feed{display:flex;flex-direction:column}
+.feed-item{display:flex;gap:14px;padding:12px 4px;border-bottom:1px solid var(--border);font-size:13.5px}
+.feed-item:last-child{border-bottom:none}
+.feed-item .fd{color:var(--text-3);min-width:86px;font-variant-numeric:tabular-nums}
+.feed-item .fx{color:var(--text-2)}
+.feed-item .fx b{color:var(--text-1)}
 
-        /* --- DASHBOARD STYLES --- */
-        .layout-wrapper {
-            max-width: 1280px; margin: 0 auto; padding: 40px 24px;
-            opacity: 0; pointer-events: none; transition: opacity 0.6s ease;
-        }
-        .layout-wrapper.visible { opacity: 1; pointer-events: all; }
+footer.site{margin-top:40px;font-size:11.5px;color:var(--text-3);text-align:center;letter-spacing:.05em}
 
-        header {
-            margin-bottom: 40px; display: flex; justify-content: space-between;
-            align-items: flex-end; border-bottom: 1px solid var(--border-color); padding-bottom: 24px;
-        }
-        .header-title h1 { font-size: 1.5rem; font-weight: 700; margin: 0; }
-
-        .header-controls { display: flex; align-items: center; gap: 15px; }
-        .logout-btn {
-            font-size: 0.85rem; color: var(--text-secondary); background: none; border: none; cursor: pointer; text-decoration: underline;
-        }
-        .logout-btn:hover { color: var(--brand-error); }
-        .header-meta { font-size: 0.875rem; color: var(--text-secondary); background: #fff; padding: 6px 12px; border: 1px solid var(--border-color); border-radius: 6px; font-weight: 500;}
-
-        .dashboard-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
-        .card-full-width { grid-column: 1 / -1; }
-
-        .card {
-            background: var(--bg-card); border: 1px solid var(--border-color);
-            border-radius: 12px; padding: 24px; display: flex; flex-direction: column;
-            box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1); transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
-        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-        .card-title { font-weight: 600; font-size: 1rem; color: var(--text-primary); }
-        .card-badge { font-size: 0.75rem; padding: 4px 10px; border-radius: 99px; background: #EEF2FF; color: var(--brand-primary); font-weight: 600; }
-        .chart-wrapper { height: 300px; width: 100%; position: relative; }
-
-        @media (max-width: 768px) {
-            .dashboard-grid { grid-template-columns: 1fr; }
-            .layout-wrapper { padding: 20px 16px; }
-            header { flex-direction: column; align-items: flex-start; gap: 10px; }
-        }
-    </style>
+@media (max-width:860px){
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  .rec-grid{grid-template-columns:repeat(2,1fr)}
+  .body-grid{grid-template-columns:1fr}
+  .part-list{flex-direction:row;flex-wrap:wrap}
+  .part{flex:1 1 40%}
+  .kpi .value{font-size:28px}
+  .chart-wrap{height:280px}
+}
+</style>
 </head>
 <body>
 
-    <!-- AUTH OVERLAY -->
-    <div id="auth-overlay">
-        <div class="auth-box">
-            <h2>Biocore Analytics</h2>
-            <p>Encrypted Data Vault</p>
+<div id="auth-overlay">
+  <div class="auth-card">
+    <div class="auth-logo">BIOCORE</div>
+    <div class="auth-sub">PHYSICAL INTELLIGENCE SYSTEM</div>
+    <input type="password" id="pass-input" class="auth-input" placeholder="Access Key"
+           autocomplete="current-password" onkeyup="if(event.key==='Enter')attemptLogin(false)">
+    <button class="auth-btn" onclick="attemptLogin(false)">РАСШИФРОВАТЬ</button>
+    <div id="status-msg" class="status-msg">Загружаю данные…</div>
+  </div>
+</div>
 
-            <input type="password" id="pass-input" class="auth-input" placeholder="Enter Access Key" autocomplete="current-password" onkeyup="if(event.key === 'Enter') attemptLogin(false)">
-            <button class="auth-btn" onclick="attemptLogin(false)">Decrypt & Enter</button>
-
-            <div id="status-msg" class="status-msg">Loading data...</div>
-        </div>
+<div class="wrap" id="app">
+  <header class="site">
+    <div class="brand">
+      <h1><span class="b">BIO</span>CORE</h1>
+      <div class="tag">Physical Intelligence System</div>
     </div>
-
-    <!-- MAIN DASHBOARD -->
-    <div class="layout-wrapper" id="dashboard">
-        <header>
-            <div class="header-title">
-                <h1>Biocore Analytics</h1>
-                <p>Performance & Biometrics</p>
-            </div>
-            <div class="header-controls">
-                <div class="header-meta">SECURE SESSION</div>
-                <button class="logout-btn" onclick="logout()">Logout</button>
-            </div>
-        </header>
-
-        <div class="dashboard-grid">
-            <!-- 1. Weight -->
-            <div class="card card-full-width">
-                <div class="card-header"><span class="card-title">Weight Trend</span><span class="card-badge">KG</span></div>
-                <div class="chart-wrapper"><canvas id="weightChart"></canvas></div>
-            </div>
-
-            <!-- 2. Pushups -->
-            <div class="card">
-                <div class="card-header"><span class="card-title">Strength: Pushups</span><span class="card-badge" style="color:#8B5CF6; background:#F5F3FF">REPS</span></div>
-                <div class="chart-wrapper"><canvas id="pushupsChart"></canvas></div>
-            </div>
-
-            <!-- 3. Torso -->
-            <div class="card">
-                <div class="card-header"><span class="card-title">Torso Metrics</span><span class="card-badge" style="color:#F59E0B; background:#FFFBEB">CM</span></div>
-                <div class="chart-wrapper"><canvas id="torsoChart"></canvas></div>
-            </div>
-
-            <!-- 4. Arms -->
-            <div class="card">
-                <div class="card-header"><span class="card-title">Arms Symmetry</span><span class="card-badge" style="color:#10B981; background:#ECFDF5">L / R</span></div>
-                <div class="chart-wrapper"><canvas id="armsChart"></canvas></div>
-            </div>
-
-            <!-- 5. Legs -->
-            <div class="card">
-                <div class="card-header"><span class="card-title">Legs Symmetry</span><span class="card-badge" style="color:#10B981; background:#ECFDF5">L / R</span></div>
-                <div class="chart-wrapper"><canvas id="legsChart"></canvas></div>
-            </div>
-        </div>
+    <div class="head-date">
+      <span id="head-date"></span>
+      <button class="lock" onclick="logout()">Выйти</button>
     </div>
+  </header>
 
-    <script>
-        // --- 1. SETUP & AUTO-LOGIN ---
-        let encryptedString = null;
-        const statusEl = document.getElementById('status-msg');
-        const LS_KEY = 'biocore_access_key'; // Ключ для LocalStorage
+  <section class="kpi-grid" id="kpi"></section>
 
-        fetch('public_data.json')
-            .then(response => {
-                if(!response.ok) throw new Error("Data file missing");
-                return response.json();
-            })
-            .then(data => {
-                encryptedString = data;
-                statusEl.innerText = "Data loaded.";
+  <div class="sec-title">Физическая динамика</div>
+  <section class="card">
+    <div class="chart-head">
+      <div class="tabs" id="metric-tabs"></div>
+      <div class="tabs" id="range-tabs"></div>
+    </div>
+    <div class="chart-wrap"><canvas id="mainChart"></canvas></div>
+    <div class="legend" id="main-legend"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:10px">
+      <button class="table-toggle" onclick="toggleTable()">Таблица</button>
+    </div>
+    <table class="data-table" id="main-table"></table>
+  </section>
 
-                // --- АВТОМАТИЧЕСКИЙ ВХОД ---
-                const savedPass = localStorage.getItem(LS_KEY);
-                if (savedPass) {
-                    document.getElementById('pass-input').value = savedPass;
-                    statusEl.innerText = "Auto-decrypting...";
-                    attemptLogin(true); // true = это авто-вход
-                } else {
-                    statusEl.innerText = "Password required.";
-                }
-            })
-            .catch(err => {
-                console.error(err);
-                statusEl.innerText = "Error: public_data.json not found.";
-                statusEl.className = "status-msg status-error";
-            });
+  <div class="sec-title">Активность года</div>
+  <section class="card">
+    <div class="heat-scroll">
+      <div class="heat-months" id="heat-months"></div>
+      <div class="heat" id="heat"></div>
+    </div>
+    <div class="heat-legend">
+      <span>меньше</span>
+      <div class="heat-cell"></div><div class="heat-cell l1"></div>
+      <div class="heat-cell l2"></div><div class="heat-cell l3"></div>
+      <div class="heat-cell rec"></div>
+      <span>больше · неон = рекорд</span>
+    </div>
+  </section>
 
-        // --- 2. DECRYPTION LOGIC ---
-        function attemptLogin(isAuto) {
-            const password = document.getElementById('pass-input').value;
+  <div class="sec-title">Сила</div>
+  <section>
+    <div class="rec-grid" id="strength-cards"></div>
+    <div class="card">
+      <div class="chart-head"><div class="chart-title">Подходы и объём · отжимания</div></div>
+      <div class="chart-wrap"><canvas id="setsChart"></canvas></div>
+      <div class="legend" id="sets-legend"></div>
+    </div>
+  </section>
 
-            if (!encryptedString) return;
-            if (!password && !isAuto) {
-                statusEl.innerText = "Enter password.";
-                return;
+  <div class="sec-title">Тело</div>
+  <section class="card">
+    <div class="body-grid">
+      <div class="part-list" id="part-list"></div>
+      <div>
+        <div class="chart-wrap" style="height:300px"><canvas id="bodyChart"></canvas></div>
+        <div class="legend" id="body-legend"></div>
+        <div class="mini-note" id="body-note"></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="sec-title">Лента событий</div>
+  <section class="card">
+    <div class="feed" id="feed"></div>
+  </section>
+
+  <footer class="site" id="foot"></footer>
+</div>
+
+<div id="tip"></div>
+
+<script>
+/* ================= РАСШИФРОВКА ================= */
+let RAW = null;   // исходный объект данных {дата: {...}}
+let encryptedString = null;
+
+fetch('public_data.json')
+  .then(r => { if(!r.ok) throw new Error(); return r.json(); })
+  .then(str => {
+    encryptedString = str;
+    setStatus('Данные загружены. Введи ключ.');
+    const saved = sessionStorage.getItem('biocore_key');
+    if (saved) { document.getElementById('pass-input').value = saved; attemptLogin(true); }
+  })
+  .catch(() => setStatus('Ошибка: public_data.json не найден.', true));
+
+function setStatus(t, err){ const el = document.getElementById('status-msg');
+  el.innerText = t; el.className = 'status-msg' + (err ? ' error' : ''); }
+
+function attemptLogin(silent){
+  const pass = document.getElementById('pass-input').value;
+  if (!pass || !encryptedString) return;
+  try {
+    const dec = CryptoJS.AES.decrypt(encryptedString, pass);
+    const str = dec.toString(CryptoJS.enc.Utf8);
+    if (!str) throw new Error();
+    RAW = JSON.parse(str);
+    sessionStorage.setItem('biocore_key', pass);
+    document.getElementById('auth-overlay').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    boot();
+  } catch(e) {
+    sessionStorage.removeItem('biocore_key');
+    if (!silent) setStatus('Неверный ключ.', true);
+    else setStatus('Данные загружены. Введи ключ.');
+  }
+}
+
+function logout(){ sessionStorage.removeItem('biocore_key'); location.reload(); }
+
+/* ================= НОРМАЛИЗАЦИЯ ================= */
+/* Поддержка форматов: 10 | [10,8] | {sets:[...], difficulty, comment} */
+function setsOf(v){
+  if (v == null) return [];
+  if (Array.isArray(v)) return v.map(Number);
+  if (typeof v === 'object') return (v.sets || []).map(Number);
+  return [Number(v)];
+}
+function metaOf(v){
+  return (v && typeof v === 'object' && !Array.isArray(v))
+    ? { difficulty: v.difficulty || null, comment: v.comment || '', at: v.created_at || null }
+    : { difficulty: null, comment: '', at: null };
+}
+function num(v){ return typeof v === 'number' ? v : null; }
+function fromPair(o){ // {left, right} | {center} | число
+  if (o == null) return null;
+  if (typeof o === 'number') return { c: o };
+  const r = {};
+  if (typeof o.left === 'number') r.l = o.left;
+  if (typeof o.right === 'number') r.r = o.right;
+  if (typeof o.center === 'number') r.c = o.center;
+  return Object.keys(r).length ? r : null;
+}
+
+function normalize(raw){
+  const days = {};
+  for (const d of Object.keys(raw).sort()){
+    const e = raw[d];
+    const torso = e.torso || {};
+    const body = e.body || {};
+    days[d] = {
+      weight: num(e.weight),
+      waist: num(e.waist_circumference) ?? num(body.waist) ?? (fromPair(torso.waist)?.c ?? null),
+      pushups: setsOf(e.pushups), pushMeta: metaOf(e.pushups),
+      pullups: setsOf(e.pullups),
+      neck:  num(body.neck)  ?? (fromPair(torso.neck)?.c ?? null),
+      chest: num(body.chest) ?? (fromPair(torso.chest)?.c ?? null),
+      hips:  num(body.hips)  ?? (fromPair(torso.hips)?.c ?? null),
+      biceps: fromPair(e.arms?.biceps), forearm: fromPair(e.arms?.forearm),
+      thigh: fromPair(e.legs?.thigh), calf: fromPair(e.legs?.calf),
+    };
+  }
+  return days;
+}
+
+let D = {};           // нормализованные дни
+let DATES = [];       // отсортированные даты
+
+const fmtD = new Intl.DateTimeFormat('ru-RU', { day:'numeric', month:'long' });
+const fmtDs = new Intl.DateTimeFormat('ru-RU', { day:'numeric', month:'short' });
+function g(x){ return (Math.round(x*10)/10).toLocaleString('ru-RU'); }
+function sum(a){ return a.reduce((s,x)=>s+x,0); }
+
+function series(key){ // [[date, value], ...]
+  return DATES.filter(d => D[d][key] != null).map(d => [d, D[d][key]]);
+}
+function workouts(metric){ // [{d, sets, total}]
+  return DATES.filter(d => D[d][metric].length)
+              .map(d => ({ d, sets: D[d][metric], total: sum(D[d][metric]) }));
+}
+function isoWeekStart(date){ const x = new Date(date); const wd = (x.getDay()+6)%7;
+  x.setDate(x.getDate()-wd); x.setHours(0,0,0,0); return x; }
+function inRange(d, from, to){ const t = new Date(d+'T12:00'); return t >= from && t <= to; }
+function localISO(dt){ // YYYY-MM-DD в локальном времени
+  return dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0') + '-' + String(dt.getDate()).padStart(2,'0');
+}
+
+/* ================= ЗАПУСК ================= */
+const CH = {}; // chart instances
+
+function boot(){
+  D = normalize(RAW);
+  DATES = Object.keys(D);
+  Chart.defaults.color = '#6b757d';
+  Chart.defaults.borderColor = '#22272c';
+  Chart.defaults.font.family = 'system-ui,-apple-system,"Segoe UI",sans-serif';
+
+  const today = new Date();
+  document.getElementById('head-date').textContent =
+    fmtD.format(today) + ' ' + today.getFullYear();
+
+  renderKPI();
+  renderTabs();
+  renderMain();
+  renderHeat();
+  renderStrength();
+  renderBody();
+  renderFeed();
+  const last = DATES[DATES.length-1];
+  document.getElementById('foot').textContent =
+    'BIOCORE · данные зашифрованы AES · последняя запись: ' + (last || '—');
+}
+
+/* ================= KPI ================= */
+function deltaOver(sr, days){
+  if (sr.length < 2) return null;
+  const [ld, lv] = sr[sr.length-1];
+  const target = new Date(new Date(ld+'T12:00') - days*864e5);
+  let base = null;
+  for (const [d, v] of sr){
+    const t = new Date(d+'T12:00');
+    if (t <= target || base === null) base = v;
+  }
+  return base === null ? null : lv - base;
+}
+function weekVolume(metric, offset){
+  const start = isoWeekStart(new Date()); start.setDate(start.getDate()+offset*7);
+  const end = new Date(start); end.setDate(end.getDate()+6); end.setHours(23,59,59);
+  return workouts(metric).filter(w => inRange(w.d, start, end));
+}
+function streak(){
+  let s = 0;
+  const cur = new Date();
+  if (!D[localISO(cur)]) cur.setDate(cur.getDate()-1);
+  while (D[localISO(cur)]){ s++; cur.setDate(cur.getDate()-1); }
+  return s;
+}
+
+function kpiTile(label, val, unit, delta){
+  return `<div class="card kpi"><div class="label">${label}</div>
+    <div class="value">${val}<span class="unit">${unit}</span></div>
+    <div class="delta ${delta.cls||''}">${delta.text}</div></div>`;
+}
+
+function renderKPI(){
+  const w = series('weight'), t = series('waist');
+  const wNow = w.length ? w[w.length-1][1] : null;
+  const tNow = t.length ? t[t.length-1][1] : null;
+  const wD = deltaOver(w, 7), tD = deltaOver(t, 7);
+
+  const cw = weekVolume('pushups', 0), pw = weekVolume('pushups', -1);
+  const cv = sum(cw.map(x=>x.total)), pv = sum(pw.map(x=>x.total));
+  const volDelta = pv ? Math.round((cv-pv)/pv*100) : null;
+  const st = streak();
+
+  const dTxt = (d, unit, goodDown) => d == null ? {text:'нет данных за 7 дней'} :
+    { text: `${d>0?'+':''}${g(d)} ${unit} за 7 дней`,
+      cls: d === 0 ? '' : ((d < 0) === goodDown ? 'good' : 'bad') };
+
+  document.getElementById('kpi').innerHTML =
+    kpiTile('Вес', wNow!=null?g(wNow):'—','кг', dTxt(wD,'кг',true)) +
+    kpiTile('Талия', tNow!=null?g(tNow):'—','см', dTxt(tD,'см',true)) +
+    kpiTile('Отжиманий за неделю', g(cv),'повт.',
+      volDelta==null ? {text: pw.length?'на уровне прошлой':'первая неделя с данными'} :
+      {text:`${volDelta>0?'+':''}${volDelta}% к прошлой неделе`, cls: volDelta>0?'good':(volDelta<0?'bad':'')}) +
+    kpiTile('Серия активности', st,'дн.',
+      st>=3 ? {text:'🔥 не прерывай серию', cls:'hot'} : {text:'дней подряд с записями'});
+}
+
+/* ================= ГЛАВНЫЙ ГРАФИК ================= */
+const METRICS = [
+  ['pushups','Отжимания'], ['weight','Вес'], ['waist','Талия'], ['pullups','Подтягивания']
+];
+const RANGES = [['7д',7],['30д',30],['90д',90],['Год',365]];
+let curMetric = 'pushups', curRange = 90;
+
+function renderTabs(){
+  document.getElementById('metric-tabs').innerHTML = METRICS.map(([k,t]) =>
+    `<button class="tab ${k===curMetric?'on':''}" onclick="setMetric('${k}')">${t}</button>`).join('');
+  document.getElementById('range-tabs').innerHTML = RANGES.map(([t,d]) =>
+    `<button class="tab ${d===curRange?'on':''}" onclick="setRange(${d})">${t}</button>`).join('');
+}
+function setMetric(k){ curMetric = k; renderTabs(); renderMain(); }
+function setRange(d){ curRange = d; renderTabs(); renderMain(); }
+
+const tooltipStyle = {
+  backgroundColor:'#1c2126', borderColor:'rgba(255,255,255,.12)', borderWidth:1,
+  titleColor:'#f2f5f7', bodyColor:'#aab3ba', padding:10, cornerRadius:10,
+  displayColors:false
+};
+function baseScales(zero){
+  return {
+    x:{ type:'time', time:{ unit:'day' },
+        grid:{ display:false },
+        ticks:{ maxTicksLimit:8,
+          callback: function(value){ return fmtDs.format(new Date(value)); } } },
+    y:{ beginAtZero: zero, grid:{ color:'#22272c' },
+        ticks:{ maxTicksLimit:6, callback:v=>g(v) } }
+  };
+}
+function legendHtml(el, items){
+  document.getElementById(el).innerHTML = items.map(i =>
+    `<span class="li"><span class="sw ${i.dot?'dot':''}" style="${i.dash
+      ? 'background:repeating-linear-gradient(90deg,'+i.c+' 0 4px,transparent 4px 8px);'
+      : 'background:'+i.c+';'}"></span>${i.t}</span>`).join('');
+}
+
+function cutoff(){ const c = new Date(); c.setDate(c.getDate()-curRange); return c; }
+
+function renderMain(){
+  const ctx = document.getElementById('mainChart');
+  if (CH.main) CH.main.destroy();
+  const from = cutoff();
+
+  if (curMetric === 'pushups' || curMetric === 'pullups'){
+    const all = workouts(curMetric);
+    const ws = all.filter(w => new Date(w.d+'T12:00') >= from);
+    // среднее последних 3 тренировок (по всей истории)
+    const avg = new Map();
+    all.forEach((w,i) => {
+      const win = all.slice(Math.max(0,i-2), i+1);
+      avg.set(w.d, sum(win.map(x=>x.total))/win.length);
+    });
+    // рекорды: новый лучший подход
+    let best = 0; const recDays = new Set();
+    all.forEach(w => { const m = Math.max(...w.sets);
+      if (m > best){ best = m; if (m > 0) recDays.add(w.d); } });
+
+    CH.main = new Chart(ctx, { data: {
+      datasets: [
+        { type:'bar', label:'Объём', data: ws.map(w=>({x:w.d, y:w.total})),
+          backgroundColor:'#7aa21c', borderRadius:4, borderSkipped:'start',
+          maxBarThickness:14, order:3 },
+        { type:'line', label:'Первый подход', data: ws.map(w=>({x:w.d, y:w.sets[0]})),
+          borderColor:'#2593b1', backgroundColor:'#2593b1', borderWidth:2,
+          pointRadius:3, pointHitRadius:12, tension:.3, order:2 },
+        { type:'line', label:'Среднее ×3', data: ws.map(w=>({x:w.d, y:avg.get(w.d)})),
+          borderColor:'#8a949c', borderWidth:2, borderDash:[5,5],
+          pointRadius:0, pointHitRadius:0, tension:.3, order:1 },
+        { type:'scatter', label:'Рекорд', data: ws.filter(w=>recDays.has(w.d)).map(w=>({x:w.d, y:Math.max(...w.sets)})),
+          backgroundColor:'#c8ff4a', borderColor:'#0a0c0e', borderWidth:2,
+          pointRadius:6, pointHoverRadius:7, order:0 },
+      ]},
+      options: { responsive:true, maintainAspectRatio:false,
+        interaction:{ mode:'nearest', intersect:false },
+        plugins:{ legend:{display:false}, tooltip:{ ...tooltipStyle,
+          callbacks:{
+            title: items => fmtD.format(new Date(items[0].parsed.x)),
+            label: item => {
+              const d = localISO(new Date(item.parsed.x));
+              const w = ws.find(x=>x.d===d);
+              if (!w) return item.dataset.label + ': ' + g(item.parsed.y);
+              if (item.dataset.label === 'Объём'){
+                const diff = curMetric==='pushups' ? D[d].pushMeta.difficulty : null;
+                const dl = {easy:'легко',normal:'нормально',hard:'тяжело'}[diff];
+                const lines = [w.sets.map(g).join(' · ') + '  =  ' + g(w.total)];
+                if (dl) lines.push('Тяжесть: ' + dl);
+                if (curMetric==='pushups' && D[d].pushMeta.comment) lines.push('📝 ' + D[d].pushMeta.comment);
+                return lines;
+              }
+              return item.dataset.label + ': ' + g(item.parsed.y);
             }
+          }}},
+        scales: baseScales(true) }
+    });
+    legendHtml('main-legend', [
+      {c:'#7aa21c', t:'Объём тренировки'},
+      {c:'#2593b1', t:'Первый подход'},
+      {c:'#8a949c', t:'Среднее 3 тренировок', dash:true},
+      {c:'#c8ff4a', t:'Личный рекорд', dot:true},
+    ]);
+    buildTable(ws.map(w => [w.d, w.sets.map(g).join(' · '), g(w.total)]).reverse(),
+               ['Дата','Подходы','Объём']);
+  } else {
+    const sr = series(curMetric).filter(([d]) => new Date(d+'T12:00') >= from);
+    // скользящее среднее по 5 замерам
+    const ma = sr.map(([d],i) => {
+      const win = sr.slice(Math.max(0,i-4), i+1);
+      return { x:d, y: sum(win.map(x=>x[1]))/win.length };
+    });
+    const grad = ctx.getContext('2d').createLinearGradient(0,0,0,320);
+    grad.addColorStop(0,'rgba(200,255,74,.16)'); grad.addColorStop(1,'rgba(200,255,74,0)');
 
-            // Небольшая задержка для UI
-            setTimeout(() => {
-                try {
-                    const decrypted = CryptoJS.AES.decrypt(encryptedString, password);
-                    const strData = decrypted.toString(CryptoJS.enc.Utf8);
+    CH.main = new Chart(ctx, { type:'line', data: { datasets: [
+      { label: curMetric==='weight'?'Вес':'Талия', data: sr.map(([d,v])=>({x:d,y:v})),
+        borderColor:'#c8ff4a', backgroundColor:grad, fill:true, borderWidth:2,
+        pointRadius:3, pointHitRadius:12, pointBackgroundColor:'#c8ff4a', tension:.3 },
+      { label:'Тренд', data: ma, borderColor:'#8a949c', borderWidth:2,
+        borderDash:[5,5], pointRadius:0, tension:.3 },
+    ]},
+      options:{ responsive:true, maintainAspectRatio:false,
+        interaction:{ mode:'nearest', intersect:false },
+        plugins:{ legend:{display:false}, tooltip:{ ...tooltipStyle,
+          callbacks:{ title: items => fmtD.format(new Date(items[0].parsed.x)),
+                      label: i => i.dataset.label + ': ' + g(i.parsed.y) + (curMetric==='weight'?' кг':' см') }}},
+        scales: baseScales(false) }
+    });
+    legendHtml('main-legend', [
+      {c:'#c8ff4a', t: curMetric==='weight'?'Вес, кг':'Талия, см'},
+      {c:'#8a949c', t:'Скользящее среднее', dash:true},
+    ]);
+    buildTable(sr.map(([d,v]) => [d, g(v)]).reverse(),
+               ['Дата', curMetric==='weight'?'Вес, кг':'Талия, см']);
+  }
+}
 
-                    if (!strData) throw new Error("Decryption failed");
+function buildTable(rows, head){
+  const t = document.getElementById('main-table');
+  t.innerHTML = '<tr>' + head.map(h=>`<th>${h}</th>`).join('') + '</tr>' +
+    rows.slice(0,30).map(r => '<tr>' + r.map(c=>`<td>${c}</td>`).join('') + '</tr>').join('');
+}
+function toggleTable(){ document.getElementById('main-table').classList.toggle('show'); }
 
-                    const jsonData = JSON.parse(strData);
+/* ================= ТЕПЛОВАЯ КАРТА ================= */
+function renderHeat(){
+  const year = new Date().getFullYear();
+  const start = isoWeekStart(new Date(year,0,1));
+  const today = new Date(); today.setHours(23,59,59);
+  const heat = document.getElementById('heat');
+  const monthsEl = document.getElementById('heat-months');
+  heat.innerHTML = ''; monthsEl.innerHTML = '';
+  const tip = document.getElementById('tip');
 
-                    // УСПЕХ: Сохраняем пароль в память браузера
-                    localStorage.setItem(LS_KEY, password);
+  let best = 0; const recDays = new Set();
+  workouts('pushups').forEach(w => { const m = Math.max(...w.sets);
+    if (m > best){ best = m; if (m > 0) recDays.add(w.d); } });
 
-                    unlockDashboard(jsonData);
+  const monthNames = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+  const cur = new Date(start);
+  let lastMonth = -1;
 
-                } catch (e) {
-                    console.error(e);
-                    // Если это был авто-вход и он не сработал (ты сменил пароль в боте)
-                    if (isAuto) {
-                        statusEl.innerText = "Saved password invalid. Please re-enter.";
-                        localStorage.removeItem(LS_KEY); // Удаляем старый пароль
-                    } else {
-                        statusEl.innerText = "Incorrect Password";
-                        statusEl.className = "status-msg status-error";
-                        shakeBox();
-                    }
-                }
-            }, 50);
-        }
+  for (let week = 0; week < 54; week++){
+    if (cur.getFullYear() > year) break;
+    const col = document.createElement('div'); col.className = 'heat-col';
 
-        function unlockDashboard(data) {
-            const overlay = document.getElementById('auth-overlay');
-            const dashboard = document.getElementById('dashboard');
+    const lbl = document.createElement('span');
+    lbl.style.cssText = 'width:15px;flex-shrink:0;overflow:visible;white-space:nowrap';
+    const m = cur.getMonth();
+    if (cur.getFullYear() === year && m !== lastMonth && cur.getDate() <= 14){
+      lbl.textContent = monthNames[m]; lastMonth = m;
+    }
+    monthsEl.appendChild(lbl);
 
-            overlay.style.opacity = '0';
-            setTimeout(() => {
-                overlay.style.display = 'none';
-                dashboard.classList.add('visible');
-                renderCharts(data);
-            }, 500);
-        }
+    for (let i = 0; i < 7; i++){
+      const dStr = localISO(cur);
+      const cell = document.createElement('div');
+      cell.className = 'heat-cell';
+      if (cur.getFullYear() !== year){ cell.style.visibility = 'hidden'; }
+      else if (cur > today){ cell.classList.add('future'); }
+      else if (D[dStr]){
+        const e = D[dStr];
+        const nMetrics = ['weight','waist','neck','chest','hips'].filter(k=>e[k]!=null).length
+          + (e.biceps?1:0) + (e.thigh?1:0);
+        const workout = e.pushups.length + e.pullups.length > 0;
+        if (recDays.has(dStr)) cell.classList.add('rec');
+        else if (workout) cell.classList.add('l3');
+        else if (nMetrics >= 2) cell.classList.add('l2');
+        else cell.classList.add('l1');
+        cell.addEventListener('mousemove', ev => {
+          const lines = [`<b>${fmtD.format(new Date(dStr+'T12:00'))}</b>`];
+          if (e.pushups.length) lines.push('Отжимания: ' + e.pushups.map(g).join(' · ') + ' = ' + g(sum(e.pushups)));
+          if (e.pullups.length) lines.push('Подтягивания: ' + g(sum(e.pullups)));
+          if (e.weight != null) lines.push('Вес: ' + g(e.weight) + ' кг');
+          if (e.waist != null) lines.push('Талия: ' + g(e.waist) + ' см');
+          if (recDays.has(dStr)) lines.push('🏆 Рекорд подхода');
+          tip.innerHTML = lines.join('<br>');
+          tip.style.opacity = 1;
+          tip.style.left = Math.min(ev.clientX + 14, innerWidth - 240) + 'px';
+          tip.style.top = (ev.clientY + 14) + 'px';
+        });
+        cell.addEventListener('mouseleave', () => tip.style.opacity = 0);
+      }
+      col.appendChild(cell);
+      cur.setDate(cur.getDate() + 1);
+    }
+    heat.appendChild(col);
+  }
+}
 
-        function logout() {
-            localStorage.removeItem(LS_KEY);
-            location.reload();
-        }
+/* ================= СИЛА ================= */
+function renderStrength(){
+  const all = workouts('pushups');
+  const bestSet = all.length ? Math.max(...all.flatMap(w=>w.sets)) : 0;
+  const bestVol = all.length ? Math.max(...all.map(w=>w.total)) : 0;
+  const from30 = new Date(); from30.setDate(from30.getDate()-30);
+  const last30 = all.filter(w => new Date(w.d+'T12:00') >= from30);
+  const avg30 = last30.length ? sum(last30.map(w=>w.total))/last30.length : 0;
+  const total = sum(all.map(w=>w.total));
 
-        function shakeBox() {
-            document.querySelector('.auth-box').animate([
-                { transform: 'translateX(0)' },
-                { transform: 'translateX(-5px)' },
-                { transform: 'translateX(5px)' },
-                { transform: 'translateX(0)' }
-            ], { duration: 300 });
-        }
+  const tile = (l,v,plain) => `<div class="card rec"><div class="label">${l}</div>
+    <div class="value ${plain?'plain':''}">${v}</div></div>`;
+  document.getElementById('strength-cards').innerHTML =
+    tile('Личный рекорд · подход', g(bestSet)) +
+    tile('Лучший объём · тренировка', g(bestVol)) +
+    tile('Среднее за 30 дней', avg30?g(avg30):'—', true) +
+    tile('Всего за ' + new Date().getFullYear(), total.toLocaleString('ru-RU'), true);
 
-        // --- 3. CHART CONFIG (Оставляем без изменений) ---
-        Chart.defaults.font.family = "'Inter', sans-serif";
-        Chart.defaults.color = '#6B7280';
-        Chart.defaults.plugins.tooltip.backgroundColor = '#FFFFFF';
-        Chart.defaults.plugins.tooltip.titleColor = '#111827';
-        Chart.defaults.plugins.tooltip.bodyColor = '#4B5563';
-        Chart.defaults.plugins.tooltip.borderColor = '#E5E7EB';
-        Chart.defaults.plugins.tooltip.borderWidth = 1;
-        Chart.defaults.plugins.tooltip.padding = 10;
-        Chart.defaults.plugins.tooltip.cornerRadius = 8;
+  const ctx = document.getElementById('setsChart');
+  if (CH.sets) CH.sets.destroy();
+  const colors = ['#7aa21c','#2593b1','#9085e9'];
+  const dsSets = [0,1,2].map(i => ({
+    type:'line', label:'Подход ' + (i+1),
+    data: all.filter(w=>w.sets.length>i).map(w=>({x:w.d, y:w.sets[i]})),
+    borderColor: colors[i], backgroundColor: colors[i],
+    borderWidth:2, pointRadius:3, pointHitRadius:10, tension:.3, spanGaps:true, order:1
+  }));
+  CH.sets = new Chart(ctx, { data:{ datasets: [
+      ...dsSets,
+      { type:'bar', label:'Объём', data: all.map(w=>({x:w.d, y:w.total})),
+        backgroundColor:'rgba(201,133,0,.45)', borderRadius:4, borderSkipped:'start',
+        maxBarThickness:12, order:2 },
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      interaction:{ mode:'nearest', intersect:false },
+      plugins:{ legend:{display:false}, tooltip:{ ...tooltipStyle,
+        callbacks:{ title: items => fmtD.format(new Date(items[0].parsed.x)),
+                    label: i => i.dataset.label + ': ' + g(i.parsed.y) }}},
+      scales: baseScales(true) }
+  });
+  legendHtml('sets-legend', [
+    {c:'#7aa21c', t:'Подход 1'}, {c:'#2593b1', t:'Подход 2'},
+    {c:'#9085e9', t:'Подход 3'}, {c:'rgba(201,133,0,.8)', t:'Объём'},
+  ]);
+}
 
-        const commonOpts = {
-            responsive: true, maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
-            plugins: { legend: { align: 'end', labels: { usePointStyle: true, boxWidth: 6 } } },
-            scales: {
-                x: { type: 'time', time: { unit: 'day', displayFormats: { day: 'dd MMM' } }, grid: { display: false } },
-                y: { grid: { color: '#F3F4F6' }, border: { display: false } }
-            }
-        };
+/* ================= ТЕЛО ================= */
+const PARTS = [
+  ['weight','Вес','кг'], ['waist','Талия','см'], ['neck','Шея','см'],
+  ['chest','Грудь','см'], ['hips','Бёдра (обхват)','см'],
+  ['biceps','Бицепс','см'], ['forearm','Предплечье','см'],
+  ['thigh','Бедро','см'], ['calf','Икра','см'],
+];
+const PAIRED = ['biceps','forearm','thigh','calf'];
+let curPart = 'waist';
 
-        // --- 4. RENDER CHARTS ---
-        function renderCharts(rawData) {
-            const dates = Object.keys(rawData).sort();
-            const getVal = (d, path) => {
-                const day = rawData[d];
-                if (path === 'weight') return day.weight;
-                if (path.includes('.')) return path.split('.').reduce((o, i) => (o ? o[i] : null), day);
-                return day[path];
-            };
+function pairSeries(key){
+  const L = [], R = [];
+  for (const d of DATES){
+    const p = D[d][key];
+    if (p?.l != null) L.push([d, p.l]);
+    if (p?.r != null) R.push([d, p.r]);
+  }
+  return { L, R };
+}
 
-            // 1. Weight
-            const ctxW = document.getElementById('weightChart').getContext('2d');
-            const gradW = ctxW.createLinearGradient(0,0,0,300);
-            gradW.addColorStop(0, 'rgba(79, 70, 229, 0.15)'); gradW.addColorStop(1, 'rgba(79, 70, 229, 0)');
+function renderBody(){
+  const list = document.getElementById('part-list');
+  list.innerHTML = PARTS.map(([k, t]) => {
+    let last = '—';
+    if (PAIRED.includes(k)){
+      const {L, R} = pairSeries(k);
+      const l = L.length?L[L.length-1][1]:null, r = R.length?R[R.length-1][1]:null;
+      if (l!=null || r!=null) last = [l,r].filter(x=>x!=null).map(g).join(' / ');
+    } else {
+      const s = series(k); if (s.length) last = g(s[s.length-1][1]);
+    }
+    return `<button class="part ${k===curPart?'on':''}" onclick="setPart('${k}')">
+      <span>${t}</span><span class="pv">${last}</span></button>`;
+  }).join('');
+  renderBodyChart();
+}
+function setPart(k){ curPart = k; renderBody(); }
 
-            new Chart(ctxW, {
-                type: 'line',
-                data: {
-                    datasets: [{
-                        label: 'Weight', data: dates.map(d=>({x:d, y:getVal(d,'weight')})).filter(p=>p.y),
-                        borderColor: '#4F46E5', backgroundColor: gradW, fill: true, tension: 0.3, pointRadius: 0, pointHoverRadius: 6
-                    }]
-                }, options: commonOpts
-            });
+function renderBodyChart(){
+  const ctx = document.getElementById('bodyChart');
+  if (CH.body) CH.body.destroy();
+  const meta = PARTS.find(p=>p[0]===curPart);
+  const note = document.getElementById('body-note');
 
-            // 2. Pushups
-            const pData = { min:[], max:[], dots:[] };
-            dates.forEach(d => {
-                let v = getVal(d, 'pushups');
-                if(!v) return;
-                let arr = Array.isArray(v)?v:[v];
-                pData.min.push({x:d, y:Math.min(...arr)});
-                pData.max.push({x:d, y:Math.max(...arr)});
-                arr.forEach(val=> pData.dots.push({x:d, y:val}));
-            });
+  if (PAIRED.includes(curPart)){
+    const {L, R} = pairSeries(curPart);
+    CH.body = new Chart(ctx, { type:'line', data:{ datasets:[
+      { label:'Левая', data:L.map(([d,v])=>({x:d,y:v})), borderColor:'#7aa21c',
+        backgroundColor:'#7aa21c', borderWidth:2, pointRadius:3, pointHitRadius:12, tension:.3 },
+      { label:'Правая', data:R.map(([d,v])=>({x:d,y:v})), borderColor:'#2593b1',
+        backgroundColor:'#2593b1', borderWidth:2, pointRadius:3, pointHitRadius:12, tension:.3 },
+    ]},
+      options:{ responsive:true, maintainAspectRatio:false,
+        interaction:{ mode:'nearest', intersect:false },
+        plugins:{ legend:{display:false}, tooltip:{ ...tooltipStyle,
+          callbacks:{ title: it => fmtD.format(new Date(it[0].parsed.x)),
+                      label: i => i.dataset.label + ': ' + g(i.parsed.y) + ' см' }}},
+        scales: baseScales(false) }
+    });
+    legendHtml('body-legend', [{c:'#7aa21c',t:'Левая'},{c:'#2593b1',t:'Правая'}]);
+    note.textContent = (L.length||R.length) ? `Замеров: ${Math.max(L.length,R.length)}` : 'Нет данных — отправь замеры боту';
+  } else {
+    const sr = series(curPart);
+    const grad = ctx.getContext('2d').createLinearGradient(0,0,0,290);
+    grad.addColorStop(0,'rgba(200,255,74,.15)'); grad.addColorStop(1,'rgba(200,255,74,0)');
+    CH.body = new Chart(ctx, { type:'line', data:{ datasets:[
+      { label: meta[1], data: sr.map(([d,v])=>({x:d,y:v})), borderColor:'#c8ff4a',
+        backgroundColor: grad, fill:true, borderWidth:2, pointRadius:3,
+        pointHitRadius:12, pointBackgroundColor:'#c8ff4a', tension:.3 },
+    ]},
+      options:{ responsive:true, maintainAspectRatio:false,
+        interaction:{ mode:'nearest', intersect:false },
+        plugins:{ legend:{display:false}, tooltip:{ ...tooltipStyle,
+          callbacks:{ title: it => fmtD.format(new Date(it[0].parsed.x)),
+                      label: i => g(i.parsed.y) + ' ' + meta[2] }}},
+        scales: baseScales(false) }
+    });
+    legendHtml('body-legend', [{c:'#c8ff4a', t: meta[1] + ', ' + meta[2]}]);
+    if (sr.length >= 2){
+      const first = sr[0][1], last = sr[sr.length-1][1];
+      const days = Math.round((new Date(sr[sr.length-1][0]) - new Date(sr[0][0]))/864e5);
+      note.textContent = `${g(first)} → ${g(last)} ${meta[2]} · ${last-first>0?'+':''}${g(last-first)} за ${days} дн.`;
+    } else note.textContent = sr.length ? 'Один замер — нужна динамика' : 'Нет данных — отправь замеры боту';
+  }
+}
 
-            new Chart(document.getElementById('pushupsChart'), {
-                data: {
-                    datasets: [
-                        { type:'line', data:pData.max, borderColor:'transparent', pointRadius:0, fill:false },
-                        { type:'line', label:'Range', data:pData.min, borderColor:'#C4B5FD', backgroundColor:'rgba(139,92,246,0.1)', fill:'-1', tension:0.2 },
-                        { type:'scatter', label:'Set', data:pData.dots, backgroundColor:'#8B5CF6' }
-                    ]
-                }, options: commonOpts
-            });
+/* ================= ЛЕНТА СОБЫТИЙ ================= */
+function renderFeed(){
+  const events = [];
+  let bs = 0, bv = 0;
+  workouts('pushups').forEach(w => {
+    const m = Math.max(...w.sets);
+    if (m > bs){ if (bs > 0) events.push([w.d, `Новый рекорд подхода — <b>${g(m)}</b> отжиманий`]); bs = m; }
+    if (w.total > bv){ if (bv > 0 && w.sets.length > 1) events.push([w.d, `Лучший объём тренировки — <b>${g(w.total)}</b>`]); bv = w.total; }
+  });
+  const ws = series('weight');
+  let mn = Infinity;
+  ws.forEach(([d,v],i) => {
+    if (v < mn){
+      if (i >= 5 && mn !== Infinity) events.push([d, `Вес впервые опустился до <b>${g(v)} кг</b>`]);
+      mn = v;
+    }
+  });
+  const ts = series('waist'); let tmn = Infinity;
+  ts.forEach(([d,v],i) => {
+    if (v < tmn){
+      if (i >= 2 && tmn !== Infinity) events.push([d, `Талия — минимум: <b>${g(v)} см</b>`]);
+      tmn = v;
+    }
+  });
 
-            // 3. Torso
-            const getTorso = (d,k) => {
-                const v = rawData[d];
-                if(v.body && v.body[k]) return v.body[k]; // new format
-                if(v.torso && v.torso[k]) return v.torso[k].center; // old format
-                return null;
-            }
-            new Chart(document.getElementById('torsoChart'), {
-                type:'line',
-                data: {
-                    datasets: [
-                        { label:'Chest', borderColor:'#F59E0B', data: dates.map(d=>({x:d, y:getTorso(d,'chest')})).filter(p=>p.y) },
-                        { label:'Waist', borderColor:'#EF4444', data: dates.map(d=>({x:d, y:getTorso(d,'waist')})).filter(p=>p.y) },
-                        { label:'Hips', borderColor:'#3B82F6', data: dates.map(d=>({x:d, y:getTorso(d,'hips')})).filter(p=>p.y) }
-                    ]
-                }, options: commonOpts
-            });
-
-            // 4 & 5. Limbs
-            const getLimb = (d,g,p,s) => {
-                const v = rawData[d];
-                if(v[g] && v[g][p]) return v[g][p][s];
-                return null;
-            }
-            const limbCfg = (g,p1,p2) => ({
-                type:'line',
-                data: {
-                    datasets: [
-                        { label: p1+' (L)', borderColor:'#10B981', borderDash:[5,5], data:dates.map(d=>({x:d, y:getLimb(d,g,p1,'left')})).filter(p=>p.y) },
-                        { label: p1+' (R)', borderColor:'#10B981', data:dates.map(d=>({x:d, y:getLimb(d,g,p1,'right')})).filter(p=>p.y) },
-                        { label: p2+' (L)', borderColor:'#6366F1', borderDash:[5,5], data:dates.map(d=>({x:d, y:getLimb(d,g,p2,'left')})).filter(p=>p.y) },
-                        { label: p2+' (R)', borderColor:'#6366F1', data:dates.map(d=>({x:d, y:getLimb(d,g,p2,'right')})).filter(p=>p.y) }
-                    ]
-                }, options: commonOpts
-            });
-
-            new Chart(document.getElementById('armsChart'), limbCfg('arms','biceps','forearm'));
-            new Chart(document.getElementById('legsChart'), limbCfg('legs','thigh','calf'));
-        }
-    </script>
+  events.sort((a,b) => b[0].localeCompare(a[0]));
+  document.getElementById('feed').innerHTML = events.slice(0,10).map(([d, t]) =>
+    `<div class="feed-item"><span class="fd">${fmtDs.format(new Date(d+'T12:00'))}</span><span class="fx">${t}</span></div>`
+  ).join('') || '<div class="feed-item"><span class="fx">Записывай данные — события появятся сами.</span></div>';
+}
+</script>
 </body>
 </html>
